@@ -1,0 +1,4 @@
+DATAFLOW,MEASURE: Measure,INDEX: Index,TSEST: Adjustment Type,REGION: Region,FREQ: Frequency,TIME_PERIOD: Time Period,OBS_VALUE,UNIT_MEASURE: Unit of Measure,OBS_STATUS: Observation Status,DECIMALS: Decimals,OBS_COMMENT: Observation Comment,BASE_PERIOD: Reference Base Period
+ABS:CPI(2.0.0),1: Index numbers,30014: Rents,10: Original,2: Melbourne,M: Monthly,2022-07,85.02,IN: Index Numbers,,,,25: Sep 2025 = 100.0
+ABS:CPI(2.0.0),1: Index numbers,30014: Rents,10: Original,2: Melbourne,M: Monthly,2022-08,85.4,IN: Index Numbers,,,,25: Sep 2025 = 100.0
+ABS:CPI(2.0.0),1: Index numbers,30014: Rents,10: Original,50: Australia,M: Monthly,2022-07,83.04,IN: Index Numbers,r: revised,,,25: Sep 2025 = 100.0
