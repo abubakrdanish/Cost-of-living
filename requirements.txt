@@ -4,3 +4,11 @@ dbt-duckdb
 pandas
 requests
 prefect
+openpyxl
+python-dotenv
+
+# Testing
+pytest
+
+# This repo's own package (makes `ingestion` importable everywhere)
+-e .

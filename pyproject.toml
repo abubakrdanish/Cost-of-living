@@ -1,0 +1,16 @@
+[project]
+name = "cost-of-living"
+version = "0.1.0"
+description = "Australian cost-of-living data pipeline (ABS CPI, rents, WPI)"
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["ingestion"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
