@@ -1,0 +1,7 @@
+au_cost_of_living:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../warehouse/cost_of_living.duckdb
+      threads: 4

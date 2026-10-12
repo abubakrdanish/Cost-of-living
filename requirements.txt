@@ -1,0 +1,6 @@
+duckdb
+dbt-core
+dbt-duckdb
+pandas
+requests
+prefect
