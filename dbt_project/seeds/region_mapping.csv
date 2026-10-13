@@ -1,0 +1,10 @@
+region_key,region_sort_order,is_national,cpi_region_code,capital_city,wpi_region_code,state_name
+AUS,0,true,50,Weighted average of eight capital cities,AUS,Australia
+NSW,1,false,1,Sydney,1,New South Wales
+VIC,2,false,2,Melbourne,2,Victoria
+QLD,3,false,3,Brisbane,3,Queensland
+SA,4,false,4,Adelaide,4,South Australia
+WA,5,false,5,Perth,5,Western Australia
+TAS,6,false,6,Hobart,6,Tasmania
+NT,7,false,7,Darwin,7,Northern Territory
+ACT,8,false,8,Canberra,8,Australian Capital Territory

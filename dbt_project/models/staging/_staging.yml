@@ -1,0 +1,167 @@
+version: 2
+
+models:
+  - name: stg_abs__cpi_all_groups
+    description: >
+      All groups CPI index numbers from ABS,CPI,2.0.0. Choices: latest raw
+      snapshot only; MEASURE 1 (index numbers); INDEX 10001 (All groups CPI);
+      TSEST 10 (Original), because seasonally adjusted series are not
+      published for capital cities and Original is used everywhere for
+      like-for-like comparison. Both frequencies are kept: quarterly from
+      1948-Q3 (Darwin 1980-Q3) and monthly from 2024-04. Index base Sep 2025 = 100.
+      The API quarterly series is an exact rebase of the archived quarterly
+      CPI (constant ratio 1.434 for Melbourne), so no splice is needed for CPI.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [cpi_region_code, frequency_code, period_start_date]
+    columns:
+      - name: cpi_region_code
+        description: ABS CPI region code (50 = Australia, 1-8 = capital cities).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('region_mapping')
+                field: cpi_region_code
+      - name: frequency_code
+        description: M (monthly) or Q (quarterly).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['M', 'Q']
+      - name: time_period
+        description: Period as published by ABS ('2026-08' or '2026-Q2').
+      - name: period_start_date
+        description: First day of the month or quarter, parsed from time_period.
+        data_tests: [not_null]
+      - name: quarter_start_date
+        description: First day of the quarter containing the period.
+        data_tests: [not_null]
+      - name: index_value
+        description: Index number, base Sep 2025 = 100.0.
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000
+      - name: base_period_label
+        description: ABS reference base period as published.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Sep 2025 = 100.0']
+      - name: is_revised
+        description: True when ABS flags the observation as revised (OBS_STATUS = r).
+        data_tests: [not_null]
+
+  - name: stg_abs__cpi_rents
+    description: >
+      CPI Rents index numbers from ABS,CPI,2.0.0. Choices: latest raw snapshot;
+      INDEX 30014 (Rents, expenditure class). The API also has 115522 (Rents,
+      sub-group), which holds the same series and differs by 0.01 on 3
+      observations; it is dropped. TSEST 10 (Original): seasonally adjusted
+      rents exist only for Australia. Monthly series cover Australia + 8
+      capitals from 2022-07; the quarterly series covers Australia only.
+      Rents are measured net of Commonwealth Rent Assistance (ABS method),
+      so CRA increases lower the index (e.g. Hobart -2.5% in Dec qtr 2023).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [cpi_region_code, frequency_code, period_start_date]
+    columns:
+      - name: cpi_region_code
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('region_mapping')
+                field: cpi_region_code
+      - name: frequency_code
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['M', 'Q']
+      - name: period_start_date
+        data_tests: [not_null]
+      - name: index_value
+        description: Index number, base Sep 2025 = 100.0.
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000
+      - name: is_revised
+        description: True when ABS flags the observation as revised (19 monthly Australia values on 2026-10-12).
+        data_tests: [not_null]
+
+  - name: stg_abs__cpi_rents_archive
+    description: >
+      Quarterly CPI Rents by capital city from the final quarterly CPI release
+      (6401.0 Sep quarter 2025, Table 9), 1972-Q3 to 2025-Q3 (Darwin from
+      1980-Q3). The release is frozen. Only the 9 series in the
+      abs_archive_rents_series seed are kept. Index base 2011-12 = 100, which
+      is not in the file's metadata but was checked: the FY2011-12 quarterly
+      average of the series is 100.0.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [cpi_region_code, quarter_start_date]
+    columns:
+      - name: series_id
+        data_tests: [not_null]
+      - name: cpi_region_code
+        data_tests: [not_null]
+      - name: series_description
+        description: ABS series description, e.g. 'Index Numbers ;  Rents ;  Melbourne ;'.
+      - name: period_date
+        description: Date as stamped by ABS (first day of the quarter's last month, e.g. 2025-09-01 for 2025-Q3).
+      - name: quarter_start_date
+        description: First day of the quarter (2025-07-01 for 2025-Q3).
+        data_tests: [not_null]
+      - name: index_value
+        description: Index number, base 2011-12 = 100.0.
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000
+
+  - name: stg_abs__wpi
+    description: >
+      Wage Price Index from ABS,WPI,1.2.0. Choices (approved 2026-10-13):
+      INDEX THRPEB (total hourly rates of pay excluding bonuses, the ABS
+      headline WPI); SECTOR 7 (Private and Public); INDUSTRY TOT (All
+      industries; industries exist for Australia only); TSEST 10 (Original,
+      the only type published for states; also used for Australia so every
+      region is like-for-like, which means the Australia row differs slightly
+      from the ABS seasonally adjusted headline). Quarterly from 1997-Q3.
+      Index base 2008-09 = 100 (ABS release page; blank in the API).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [wpi_region_code, quarter_start_date]
+    columns:
+      - name: wpi_region_code
+        description: ABS WPI region code (AUS, 1-8 = states and territories).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('region_mapping')
+                field: wpi_region_code
+      - name: quarter_start_date
+        data_tests: [not_null]
+      - name: index_value
+        description: Index number, base 2008-09 = 100.0.
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000
+      - name: is_revised
+        data_tests: [not_null]

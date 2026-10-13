@@ -1,0 +1,42 @@
+-- CPI Rents (expenditure class 30014), Original series, from the ABS Data API.
+-- Monthly: Australia + 8 capitals from 2022-07. Quarterly: Australia only.
+-- Latest raw snapshot only. Index base: Sep 2025 = 100.
+
+with source as (
+
+    select * from {{ source('raw', 'abs_cpi_rents') }}
+    where {{ latest_snapshot_filter(source('raw', 'abs_cpi_rents')) }}
+
+),
+
+renamed as (
+
+    select
+        {{ abs_code('measure') }}            as measure_code,
+        {{ abs_code('"index"') }}            as index_code,
+        {{ abs_label('"index"') }}           as index_label,
+        {{ abs_code('tsest') }}              as adjustment_type_code,
+        {{ abs_label('tsest') }}             as adjustment_type_label,
+        {{ abs_code('region') }}             as cpi_region_code,
+        {{ abs_label('region') }}            as region_label,
+        {{ abs_code('freq') }}               as frequency_code,
+        time_period,
+        {{ abs_period_start('time_period') }} as period_start_date,
+        cast(obs_value as double)            as index_value,
+        {{ abs_label('unit_measure') }}      as unit_label,
+        {{ abs_code('obs_status') }}         as obs_status_code,
+        {{ abs_label('base_period') }}       as base_period_label,
+        _source_file,
+        _loaded_at
+    from source
+
+)
+
+select
+    *,
+    cast(date_trunc('quarter', period_start_date) as date) as quarter_start_date,
+    coalesce(obs_status_code = 'r', false)                 as is_revised
+from renamed
+where measure_code = '1'            -- index numbers
+  and index_code = '30014'          -- Rents (expenditure class); 115522 (sub-group) is a near-duplicate
+  and adjustment_type_code = '10'   -- Original

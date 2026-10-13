@@ -1,0 +1,41 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Tables loaded by the Python ingestion (ingestion/load_raw.py). Every
+      downloaded snapshot is kept, tagged with _source_file and _loaded_at.
+      SDMX-CSV tables store every value as text exactly as downloaded, with
+      'code: label' pairs (e.g. '2: Melbourne'). See docs/data_sources.md.
+    schema: raw
+    tables:
+      - name: abs_cpi_all_groups
+        description: ABS,CPI,2.0.0 key 1.10001... (All groups CPI index numbers, all regions, M and Q).
+        columns:
+          - name: time_period
+            data_tests: [not_null]
+          - name: _source_file
+            data_tests: [not_null]
+      - name: abs_cpi_rents
+        description: ABS,CPI,2.0.0 key 1.30014+115522... (CPI Rents index numbers).
+        columns:
+          - name: time_period
+            data_tests: [not_null]
+          - name: _source_file
+            data_tests: [not_null]
+      - name: abs_cpi_capital_cities_quarterly_2025q3
+        description: >
+          6401.0 Sep quarter 2025 (final quarterly CPI release), Table 9, parsed
+          to long format: one row per series and quarter. Index base 2011-12 = 100.
+        columns:
+          - name: series_id
+            data_tests: [not_null]
+          - name: period
+            data_tests: [not_null]
+      - name: abs_wpi
+        description: ABS,WPI,1.2.0 key 1......Q (WPI quarterly index numbers, all breakdowns).
+        columns:
+          - name: time_period
+            data_tests: [not_null]
+          - name: _source_file
+            data_tests: [not_null]

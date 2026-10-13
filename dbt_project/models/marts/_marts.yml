@@ -1,0 +1,144 @@
+version: 2
+
+models:
+  - name: dim_region
+    description: >
+      One row per region: Australia plus the 8 states/territories, each paired
+      with its capital city. CPI and rents measure the capital city (or the
+      weighted average of the eight capitals for Australia); WPI measures the
+      whole state or territory. Comparing them through this mapping is an
+      approximation, spelled out in comparison_note.
+    columns:
+      - name: region_key
+        description: Short region key (AUS, NSW, VIC, QLD, SA, WA, TAS, NT, ACT).
+        data_tests: [unique, not_null]
+      - name: region_name
+        description: State or territory name ('Australia' for the national row).
+      - name: capital_city
+        description: Capital city whose CPI and rents represent the region.
+      - name: comparison_note
+        description: Plain-English caveat about comparing city CPI with state WPI.
+        data_tests: [not_null]
+
+  - name: dim_quarter
+    description: One row per calendar quarter, from the earliest to the latest quarter in any staging model.
+    columns:
+      - name: quarter_start_date
+        description: First day of the quarter. Primary key.
+        data_tests: [unique, not_null]
+      - name: quarter_end_date
+        description: Last day of the quarter.
+        data_tests: [not_null]
+      - name: quarter_label
+        description: e.g. '2026-Q2'.
+        data_tests: [unique, not_null]
+      - name: quarter_number
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4]
+                quote: false
+      - name: financial_year
+        description: Australian financial year (July to June), e.g. '1997-98'.
+
+  - name: mart_cost_of_living_quarterly
+    description: >
+      CPI, rents and wages by region and quarter. Grain: one row per
+      quarter_start_date x region_key. Range: 1997-Q3 (first quarter with all
+      three series) to the latest quarter all three cover. Every region and
+      quarter in that range has a row; a missing value is null and explained
+      in missing_reason. Indexes are rebased to 1997-Q3 = 100 so lines start
+      together and read as cumulative change since 1997. See
+      docs/data_dictionary.md for caveats.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [quarter_start_date, region_key]
+    columns:
+      - name: quarter_start_date
+        description: First day of the quarter.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_quarter')
+                field: quarter_start_date
+      - name: quarter_label
+        data_tests: [not_null]
+      - name: region_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_region')
+                field: region_key
+
+      - name: cpi_index
+        description: All groups CPI (Original), rebased to 1997-Q3 = 100.
+        data_tests:
+          - not_null
+          - accepted_range: {arguments: {min_value: 50, max_value: 500}}
+      - name: rents_index
+        description: CPI Rents (Original, spliced), rebased to 1997-Q3 = 100.
+        data_tests:
+          - not_null
+          - accepted_range: {arguments: {min_value: 50, max_value: 500}}
+      - name: wpi_index
+        description: WPI total hourly rates of pay excl. bonuses (all sectors, Original), rebased to 1997-Q3 = 100.
+        data_tests:
+          - not_null
+          - accepted_range: {arguments: {min_value: 50, max_value: 500}}
+
+      - name: cpi_index_abs_base
+        description: CPI on the ABS base (Sep 2025 = 100), for checking against ABS publications.
+        data_tests: [not_null]
+      - name: rents_index_abs_base
+        description: Spliced rents on the current ABS base (Sep 2025 = 100).
+        data_tests: [not_null]
+      - name: wpi_index_abs_base
+        description: WPI on the ABS base (2008-09 = 100).
+        data_tests: [not_null]
+
+      - name: cpi_annual_pct
+        description: CPI % change from the same quarter a year earlier.
+        data_tests:
+          - not_null
+          - accepted_range: {arguments: {min_value: -5, max_value: 15}}
+      - name: rents_annual_pct
+        description: Rents % change from the same quarter a year earlier. See rents_annual_pct_crosses_splice.
+        data_tests:
+          - not_null
+          - accepted_range: {arguments: {min_value: -20, max_value: 25}}
+      - name: wpi_annual_pct
+        description: WPI % change from the same quarter a year earlier. Null for 1997-Q3 to 1998-Q2 (WPI starts 1997-Q3).
+        data_tests:
+          - accepted_range: {arguments: {min_value: -2, max_value: 10}}
+      - name: real_wage_growth_pct_pts
+        description: >
+          wpi_annual_pct minus cpi_annual_pct, in percentage points. A simple
+          approximation of real wage growth (not the exact ratio form). Positive
+          means wages grew faster than prices. Null when wpi_annual_pct is null.
+        data_tests:
+          - accepted_range: {arguments: {min_value: -10, max_value: 10}}
+
+      - name: rents_source_series
+        description: archive_quarterly_table9 (to 2025-Q3) or api_monthly_average (from 2025-Q4).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['archive_quarterly_table9', 'api_monthly_average']
+      - name: rents_is_splice_point
+        description: True for 2025-Q4, the first quarter from the monthly series.
+        data_tests: [not_null]
+      - name: rents_annual_pct_crosses_splice
+        description: True when rents_annual_pct compares quarters from different source series (2025-Q4 to 2026-Q3); expect up to ~0.4 pts of method noise.
+        data_tests: [not_null]
+      - name: cpi_is_revised
+        description: ABS flags this CPI value as revised.
+      - name: rents_includes_revised_month
+        description: Any month in this quarter's rents average is flagged revised by ABS.
+      - name: wpi_is_revised
+        description: ABS flags this WPI value as revised.
+      - name: missing_reason
+        description: Null when every column is filled; otherwise says which values are missing and why.

@@ -1,0 +1,75 @@
+version: 2
+
+models:
+  - name: int_rents_monthly_to_quarterly
+    description: >
+      Quarterly averages of the monthly CPI Rents series (Australia + 8
+      capitals, 2022-Q3 onward, base Sep 2025 = 100). Only complete quarters
+      (3 months) are kept, so the current partial quarter is excluded until
+      its third month is published.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [cpi_region_code, quarter_start_date]
+    columns:
+      - name: months_in_quarter
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [3]
+                quote: false
+      - name: includes_revised_month
+        description: True if any of the quarter's months is flagged revised by ABS.
+
+  - name: int_rents_splice_overlap
+    description: >
+      Documented check of the rents splice. For each overlap quarter (2022-Q3
+      to 2025-Q3) it compares ratio = monthly average / archive quarterly with
+      the link factor (the ratio in 2025-Q3). If 'quarterly = average of its
+      months' held exactly, deviation_pct would be 0. Observed on 2026-10-13:
+      max |deviation_pct| between 0.14% (Sydney) and 0.41% (Hobart, 2023-Q3,
+      the quarter the Sep 2023 Commonwealth Rent Assistance increase took
+      effect). Tested by assert_rents_splice_overlap_within_tolerance.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [cpi_region_code, quarter_start_date]
+    columns:
+      - name: ratio
+        description: monthly_avg_value / archive_value for the quarter.
+      - name: link_factor
+        description: The ratio in the link quarter; multiplies the archive series onto the Sep 2025 = 100 base.
+        data_tests: [not_null]
+      - name: deviation_pct
+        description: 100 * (ratio / link_factor - 1). Size of the splice error had the link been made in this quarter instead.
+
+  - name: int_rents_quarterly_spliced
+    description: >
+      One continuous quarterly CPI Rents series per region, base Sep 2025 = 100
+      (approved 2026-10-13). Up to and including 2025-Q3 the archived quarterly
+      series (6401.0 Table 9) is used, multiplied by the link factor; from
+      2025-Q4 the quarterly average of the monthly series is used. Monthly
+      averages before 2025-Q4 are not used because the official quarterly
+      figures exist for those quarters.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [cpi_region_code, quarter_start_date]
+    columns:
+      - name: source_series
+        description: archive_quarterly_table9 or api_monthly_average.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['archive_quarterly_table9', 'api_monthly_average']
+      - name: is_splice_point
+        description: True for the first quarter taken from the monthly series (2025-Q4), i.e. the join point.
+        data_tests: [not_null]
+      - name: index_value
+        data_tests:
+          - not_null
+          - accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1000

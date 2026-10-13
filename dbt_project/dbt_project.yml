@@ -6,16 +6,35 @@ profile: 'au_cost_of_living'
 
 model-paths: ["models"]
 test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
 
 clean-targets:
   - "target"
   - "dbt_packages"
+
+vars:
+  # First quarter of the mart: WPI starts in 1997-Q3, so this is the first
+  # quarter in which CPI, rents and WPI all exist for every region.
+  mart_start_quarter: '1997-07-01'
+  # All three indexes are rebased to 100 in this quarter (approved 2026-10-13).
+  index_base_quarter: '1997-07-01'
+  # Max allowed deviation (%) of the archive/monthly ratio from the link factor
+  # in the rents splice overlap. Observed max on 2026-10-13: 0.41% (Hobart).
+  rents_splice_tolerance_pct: 0.5
+
+seeds:
+  au_cost_of_living:
+    +schema: reference
 
 models:
   au_cost_of_living:
     staging:
       +materialized: view
       +schema: staging
+    intermediate:
+      +materialized: view
+      +schema: intermediate
     marts:
       +materialized: table
       +schema: marts

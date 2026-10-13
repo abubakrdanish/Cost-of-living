@@ -1,0 +1,54 @@
+version: 2
+
+seeds:
+  - name: region_mapping
+    description: >
+      One row per region in the mart. Links the CPI region (a capital city, or
+      the weighted average of eight capitals) to the WPI region (a state or
+      territory, or all of Australia). Codes verified against ABS codelists
+      CL_CPI_REGION 1.1.0 and CL_STATE 1.0.0 on 2026-10-12.
+    config:
+      column_types:
+        region_key: varchar
+        region_sort_order: integer
+        is_national: boolean
+        cpi_region_code: varchar
+        capital_city: varchar
+        wpi_region_code: varchar
+        state_name: varchar
+    columns:
+      - name: region_key
+        description: Short region key used across the project (AUS, NSW, VIC, ...).
+        data_tests: [unique, not_null]
+      - name: cpi_region_code
+        description: ABS CPI REGION code (50 = Australia, 1-8 = capital cities).
+        data_tests: [unique, not_null]
+      - name: wpi_region_code
+        description: ABS WPI REGION code (AUS, 1-8 = states and territories).
+        data_tests: [unique, not_null]
+
+  - name: abs_archive_rents_series
+    description: >
+      ABS series IDs for 'Index Numbers; Rents; <city>' in CPI Table 9 of the
+      final quarterly release (6401.0, Sep quarter 2025). Table 9 has two
+      identical Rents columns per city (sub-group and expenditure class; values
+      match in all 213 quarters). The second column (A2326xxx) is used because
+      the table lists sub-group before expenditure class, matching API code
+      30014 (expenditure class) used for the monthly series. This mapping comes
+      from column order, not an explicit label; it has no effect on values.
+    config:
+      column_types:
+        series_id: varchar
+        cpi_region_code: varchar
+        capital_city: varchar
+    columns:
+      - name: series_id
+        data_tests: [unique, not_null]
+      - name: cpi_region_code
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('region_mapping')
+                field: cpi_region_code

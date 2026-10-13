@@ -1,3 +1,5 @@
+# Top-level dependencies (human-readable). Exact pinned versions live in
+# requirements.lock, generated with:  pip-compile requirements.txt -o requirements.lock
 duckdb
 dbt-core
 dbt-duckdb
@@ -7,8 +9,9 @@ prefect
 openpyxl
 python-dotenv
 
-# Testing
+# Testing and tooling
 pytest
+pip-tools
 
 # This repo's own package (makes `ingestion` importable everywhere)
 -e .
