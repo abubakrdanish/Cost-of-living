@@ -1,4 +1,6 @@
-"""Shared fixtures. Network access is blocked so every test proves it runs offline."""
+"""Shared fixtures. External network access is blocked so every test proves it
+runs offline. Loopback (127.0.0.1 / ::1) is allowed because the Prefect test
+harness talks to a temporary local server."""
 from __future__ import annotations
 
 import socket
@@ -9,12 +11,22 @@ import openpyxl
 import pytest
 
 FIXTURES = Path(__file__).parent / "fixtures"
+LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
+_real_connect = socket.socket.connect
+
+
+def _is_loopback(address) -> bool:
+    if isinstance(address, (str, bytes)):  # AF_UNIX path
+        return True
+    return isinstance(address, tuple) and address[0] in LOOPBACK_HOSTS
 
 
 @pytest.fixture(autouse=True)
 def no_network(monkeypatch):
-    def guard(*args, **kwargs):
-        raise RuntimeError("Network access attempted during tests")
+    def guard(self, address):
+        if _is_loopback(address):
+            return _real_connect(self, address)
+        raise RuntimeError(f"Network access attempted during tests: {address!r}")
 
     monkeypatch.setattr(socket.socket, "connect", guard)
 

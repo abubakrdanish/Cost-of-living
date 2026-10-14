@@ -1,0 +1,70 @@
+# Runs on every push and pull request. No live ABS calls: pytest blocks the
+# network, and dbt builds against the committed fixtures in tests/fixtures/ci_raw.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PREFECT_SERVER_ANALYTICS_ENABLED: "false"
+  # Fixtures start in 2020-Q3, so the mart starts (and is rebased) a year later.
+  CI_DBT_VARS: '{"mart_start_quarter": "2021-07-01", "index_base_quarter": "2021-07-01"}'
+
+jobs:
+  test:
+    name: pytest + dbt build (fixtures)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.lock
+
+      - name: Python tests (offline)
+        run: pytest
+
+      - name: Load CI fixtures into DuckDB raw
+        env:
+          COL_RAW_DATA_DIR: tests/fixtures/ci_raw
+        run: python -m ingestion.run_all --skip-download
+
+      - name: dbt build (models + all tests)
+        working-directory: dbt_project
+        run: |
+          cp profiles.yml.example profiles.yml
+          dbt build --profiles-dir . --vars "$CI_DBT_VARS"
+
+      - name: Data quality report
+        if: always()
+        run: python -m orchestration.quality_report
+
+      - name: Upload report and dbt results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-quality-report
+          path: |
+            reports/quality_report.md
+            reports/quality_report.json
+            dbt_project/target/run_results.json
+          if-no-files-found: warn
+          retention-days: 14

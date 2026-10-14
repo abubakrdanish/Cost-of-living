@@ -14,7 +14,6 @@ from dotenv import load_dotenv
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(PROJECT_ROOT / ".env")
 
-RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 LOG_DIR = PROJECT_ROOT / "logs"
 
 DEFAULT_USER_AGENT = (
@@ -30,6 +29,8 @@ def _resolve_path(value: str) -> Path:
 
 
 DB_PATH = _resolve_path(os.getenv("DUCKDB_PATH", "warehouse/cost_of_living.duckdb"))
+# CI points this at tests/fixtures/ci_raw to load committed fixtures instead.
+RAW_DATA_DIR = _resolve_path(os.getenv("COL_RAW_DATA_DIR", "data/raw"))
 USER_AGENT = os.getenv("COL_USER_AGENT", DEFAULT_USER_AGENT)
 
 

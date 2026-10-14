@@ -43,6 +43,28 @@ models:
       - name: deviation_pct
         description: 100 * (ratio / link_factor - 1). Size of the splice error had the link been made in this quarter instead.
 
+  - name: int_raw_snapshot_changes
+    description: >
+      Observation-level diff between the two newest downloads of each ABS API
+      raw table (CPI all groups, CPI rents, WPI): rows added (new periods),
+      removed, or whose value changed (ABS revisions). Empty for a table with
+      a single snapshot. Feeds the quality report. The frozen archive table is
+      not compared.
+    columns:
+      - name: raw_table
+        data_tests: [not_null]
+      - name: observation_key
+        description: Pipe-joined SDMX dimension values plus time_period.
+        data_tests: [not_null]
+      - name: change_type
+        description: added, removed or changed.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['added', 'removed', 'changed']
+      - name: latest_obs_status
+        description: "ABS OBS_STATUS on the newest value ('r: revised' when ABS flags it)."
+
   - name: int_rents_quarterly_spliced
     description: >
       One continuous quarterly CPI Rents series per region, base Sep 2025 = 100

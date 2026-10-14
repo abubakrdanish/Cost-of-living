@@ -15,11 +15,29 @@ This covers the dbt models built on the raw tables. Sources, licences and datafl
 | intermediate | `int_rents_monthly_to_quarterly` | view | 144 | Monthly rents averaged into complete quarters |
 | intermediate | `int_rents_splice_overlap` | view | 117 | Splice check: archive vs monthly average in the overlap quarters |
 | intermediate | `int_rents_quarterly_spliced` | view | 1,912 | One continuous quarterly rents series per region |
+| intermediate | `int_raw_snapshot_changes` | view | 0 (one download so far) | What changed between the two newest downloads: added, removed and revised observations |
 | marts | `dim_region` | table | 9 | Regions, with a caveat about comparing city CPI and state WPI |
 | marts | `dim_quarter` | table | 313 | Calendar quarters 1948-Q3 to 2026-Q3 |
 | marts | `mart_cost_of_living_quarterly` | table | 1,044 | **The main output.** Covers 9 regions × 116 quarters |
 
-Every staging model reads only the **latest snapshot** of its raw table. Older snapshots stay in `raw` so later ABS revisions can be compared.
+Every staging model reads only the **latest snapshot** of its raw table. Older snapshots stay in `raw` so later ABS revisions can be compared (`int_raw_snapshot_changes`).
+
+## Materialisation and incremental decisions
+
+This was decided on 2026-10-14: **no dbt model is incremental.** Incremental loading happens where it earns its place, in the raw layer, where each downloaded file is appended once and never reloaded. A full `dbt build` takes about 4 seconds.
+
+| Model | Materialisation | Why not incremental |
+|---|---|---|
+| raw tables (Python loader) | append-only, one batch per new file | **This is the incremental layer.** Identical downloads aren't saved, and loaded files are skipped. |
+| seeds (`region_mapping`, `abs_archive_rents_series`) | table | Nine rows each. They change only when the code changes. |
+| `stg_abs__cpi_all_groups`, `stg_abs__cpi_rents`, `stg_abs__wpi` | view | These must reflect the *latest* download in full, because ABS revises past values. An incremental model would need merge keys plus a full refresh after every revision, for about 3,000 rows. |
+| `stg_abs__cpi_rents_archive` | view | It reads the largest table (231k rows) but filters to 1,885 rows in well under a second. The release is frozen, so an incremental model would never add anything. |
+| `int_rents_*` | view | Small, and the splice link factor depends on the newest data, so recomputing everything is the correct behaviour. |
+| `int_raw_snapshot_changes` | view | It compares the two newest downloads, so it has to be recomputed whenever a new one arrives. |
+| `dim_region`, `dim_quarter` | table | 9 and 313 rows. |
+| `mart_cost_of_living_quarterly` | table | 1,044 rows, rebuilt in under 0.1 s. Rebasing and annual changes depend on the whole history, which revisions can change. |
+
+Revisit this if a raw table grows to millions of rows (for example, adding every CPI expenditure class for every city monthly). The first candidate would then be an incremental staging model keyed on the observation, with `--full-refresh` after an ABS rebase.
 
 ## `marts.mart_cost_of_living_quarterly`
 

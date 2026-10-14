@@ -1,0 +1,2 @@
+# CI fixtures are byte-exact cuts of ABS files (CRLF line endings); never convert them.
+tests/fixtures/ci_raw/** -text

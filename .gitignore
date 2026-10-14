@@ -29,3 +29,6 @@ dbt_project/.user.yml
 
 # Local VS Code workspace file
 *.code-workspace
+
+# Data quality reports (generated every run)
+reports/

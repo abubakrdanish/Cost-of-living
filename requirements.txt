@@ -9,6 +9,10 @@ prefect
 openpyxl
 python-dotenv
 
+# Prefect 3.8.8's local server scheduler crashes on SQLAlchemy 2.1
+# ("Can't evaluate bulk DML statement"); verified fixed on 2.0.54, 2026-10-14.
+sqlalchemy<2.1
+
 # Testing and tooling
 pytest
 pip-tools

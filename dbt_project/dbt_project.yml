@@ -13,6 +13,10 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
+flags:
+  # dbt sends anonymous usage events to dbt Labs by default; keep it local-only.
+  send_anonymous_usage_stats: false
+
 vars:
   # First quarter of the mart: WPI starts in 1997-Q3, so this is the first
   # quarter in which CPI, rents and WPI all exist for every region.
