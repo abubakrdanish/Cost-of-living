@@ -41,6 +41,40 @@ models:
       - name: financial_year
         description: Australian financial year (July to June), e.g. '1997-98'.
 
+  - name: mart_rents_splice_check
+    description: >
+      One row per region summarising the rents splice check: how far the ratio
+      of monthly-average to archived quarterly rents strays from the link
+      factor across the overlap quarters (2022-Q3 to 2025-Q3). Exists so the
+      dashboard, which reads marts only, can show the splice gap. Per-quarter
+      detail is in intermediate.int_rents_splice_overlap.
+    columns:
+      - name: region_key
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_region')
+                field: region_key
+      - name: overlap_quarters
+        description: Quarters in which both series exist.
+        data_tests:
+          - not_null
+          - accepted_range: {arguments: {min_value: 4}}
+      - name: link_factor
+        description: Monthly-average / archive ratio in the link quarter; converts the archive to the Sep 2025 = 100 base.
+        data_tests: [not_null]
+      - name: max_abs_deviation_pct
+        description: Largest |ratio / link_factor - 1| x 100 across the overlap, in percent.
+        data_tests:
+          - not_null
+          - accepted_range: {arguments: {min_value: 0, max_value: 0.5}}
+      - name: max_deviation_quarter
+        description: Quarter in which that largest deviation occurs.
+      - name: tolerance_pct
+        description: The tolerance the splice test enforces (dbt var rents_splice_tolerance_pct).
+
   - name: mart_cost_of_living_quarterly
     description: >
       CPI, rents and wages by region and quarter. Grain: one row per
