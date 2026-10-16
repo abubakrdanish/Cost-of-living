@@ -94,7 +94,7 @@ models:
                 min_value: 0
                 max_value: 1000
       - name: is_revised
-        description: True when ABS flags the observation as revised (19 monthly Australia values on 2026-10-12).
+        description: "True when ABS flags the observation as revised. On 2026-10-12 all 19 revision flags in the rents download were on the seasonally adjusted Australia series, which this model drops, so none appear here."
         data_tests: [not_null]
 
   - name: stg_abs__cpi_rents_archive

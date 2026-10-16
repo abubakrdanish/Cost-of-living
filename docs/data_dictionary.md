@@ -119,7 +119,7 @@ So treat rents annual changes for 2025-Q4 to 2026-Q3 (`rents_annual_pct_crosses_
    - The index moves more slowly than new-lease asking rents.
    - CRA increases push it down. Hobart rents fell 2.5% in the Dec qtr 2023, which the ABS attributes to the 15% CRA increase from 20 Sep 2023. They fell again in Dec qtr 2024; I haven't verified the cause of that drop.
 3. **The rents series is spliced** at 2025-Q4, with about ±0.4% method noise around the join (see above).
-4. **Real wage growth is approximate.** It's a simple difference of annual % changes, not the exact ratio `(1+w)/(1+p)−1`. The gap is about 0.3 points when inflation is near 8% (2022) and under 0.05 points at 2–4% inflation. It also mixes a city price index with a state wage index.
+4. **Real wage growth is approximate.** It's a simple difference of annual % changes, not the exact ratio `(1+w)/(1+p)−1`. Across the mart the largest gap is 0.40 points (2022-Q4, when inflation was highest); when CPI inflation is 2–4% it is at most 0.08 points. *(Corrected 2026-10-16: the Week 2 text said "about 0.3 points"; this figure comes from a query, see the real-wages page.)* It also mixes a city price index with a state wage index.
 5. **WPI measures the price of labour, not earnings.** It holds job mix fixed, so it excludes promotions, job changes, hours and bonuses. It's not average pay.
 6. **Original (not seasonally adjusted) series everywhere.** The Australia WPI row differs slightly from the ABS seasonally adjusted headline. Annual changes compare the same quarter a year apart, which removes most seasonality.
 7. **Revisions.** ABS revises recent values. Only the latest snapshot is used. Revision flags are carried through, but past values may change on the next run.

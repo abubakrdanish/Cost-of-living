@@ -1,0 +1,7 @@
+# Read-only connection to the pipeline's DuckDB warehouse. The Evidence DuckDB
+# connector opens any file in READ_ONLY mode. The path is relative to this
+# folder (dashboard/sources/marts/).
+name: marts
+type: duckdb
+options:
+  filename: ../../../warehouse/cost_of_living.duckdb

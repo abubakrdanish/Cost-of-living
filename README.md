@@ -3,148 +3,192 @@
 ![CI](https://github.com/<your-github-user>/<your-repo>/actions/workflows/ci.yml/badge.svg)
 <!-- Replace <your-github-user>/<your-repo> after pushing to GitHub. -->
 
-An end-to-end data engineering portfolio project. It ingests public Australian economic data, transforms and tests it with dbt, stores it in DuckDB, runs on a schedule with Prefect, is tested in CI, and feeds a dashboard.
+**How have rents, wages and inflation changed over time, by state and capital city in Australia?**
 
-**Question:** How have rents, wages and inflation changed over time, by state and capital city?
+This is an end-to-end data engineering project:
+- It pulls official Australian Bureau of Statistics (ABS) data and stores the raw files unchanged.
+- It models the data with dbt in DuckDB and tests it at every layer (128 dbt checks, 70 offline Python tests).
+- It runs on a local schedule with Prefect, is tested in CI, and serves a static dashboard built with Evidence.
+
+Everything is free, runs locally and needs no accounts or keys.
+
+<!-- Screenshots: add your own images, e.g. docs/images/overview.png, then uncomment.
+![Dashboard overview](docs/images/overview.png)
+![Prices, rents and wages over time](docs/images/over-time.png)
+![Rents, with the splice point marked](docs/images/rents.png)
+-->
+> **Screenshots:** _placeholder. Add `docs/images/overview.png`, `over-time.png` and `rents.png`, then uncomment the block above._
 
 > Personal portfolio project using public data only. Not financial or immigration advice.
 
-## Stack
-Everything is free and runs locally, with no accounts or keys.
-- **Warehouse:** DuckDB
-- **Transform and tests:** dbt Core (dbt-duckdb)
-- **Orchestration:** Prefect 3 (local server, cron schedule)
-- **CI:** GitHub Actions (pytest + `dbt build` on committed fixtures)
-- **Dashboard:** Evidence (Week 4)
-- **Language:** Python 3.12
+## Findings
+
+These are for 1997-Q3 to 2026-Q2. Each figure comes from a named query in [`docs/findings_queries.sql`](docs/findings_queries.sql), and `python -m orchestration.findings` re-runs them. Full table, with what the data does **not** show: [`docs/findings.md`](docs/findings.md).
+
+1. **Over the whole period, wages rose a little faster than prices.** In Australia, prices rose **+121.1%**, rents **+139.4%** and wages **+141.7%**. Wages relative to prices ended **9.3%** higher. *(F1)*
+2. **Most of that gain was lost after 2021.** Wages relative to prices peaked in 2020-Q2 and then fell **7.4%** to a low in 2023-Q2. Real wage growth was negative for **10 quarters in a row** (2021-Q2 to 2023-Q3). The 2020 peak partly reflects a temporary COVID-period dip in prices. *(F2, F4)*
+3. **Prices are again outpacing wages, in every region.** Real wage growth has been negative since 2025-Q4. In 2026-Q2 it was below zero in all 9 regions, from −0.47 points (Victoria) to −1.77 (Tasmania). *(F4, F5)*
+4. **Rent growth varied widely by capital.** Since 1997-Q3, rents rose +155.5% in Brisbane but +90.5% in Darwin. Rents outpaced the state's wages only in Brisbane and Sydney. *(F6)*
+
+These describe how the indexes moved, not why. They are index changes, not dollar levels or affordability. CPI rents are not advertised market rents.
 
 ## Architecture
 
-```
-ABS Data API (CPI, WPI)      ABS release file (final quarterly CPI, Table 9)
-          \                       /
-           ingestion/   polite HTTP: User-Agent, 2 s spacing, retries with backoff
-                |
-           data/raw/<source>/   files saved unchanged, date-stamped, .meta.json sidecar
-                |               (identical downloads are not saved again)
-           DuckDB raw.*         append-only: one batch per new file, _source_file + _loaded_at
-                |
-           dbt source freshness   age of the newest data period vs the ABS release lag
-                |
-           dbt staging        latest snapshot, typed, decoded, correct series chosen
-           dbt intermediate   rents splice (archive quarterly + monthly averages), snapshot diff
-           dbt marts          dim_region, dim_quarter, mart_cost_of_living_quarterly
-                |             (119 nodes built and tested on every run)
-           reports/quality_report.md   written every run, pass or fail
-                |
-           dashboard (Evidence, Week 4)
+```mermaid
+flowchart LR
+    subgraph ABS["ABS: public data, CC BY 4.0"]
+        API["ABS Data API<br/>CPI 2.0.0 and WPI 1.2.0"]
+        XLSX["Final quarterly CPI<br/>Table 9 (XLSX)"]
+    end
+
+    subgraph ING["ingestion/ (Python)"]
+        DL["Download<br/>polite HTTP, retries"]
+        FILES[("data/raw/<br/>unchanged, date-stamped")]
+    end
+
+    subgraph WH["DuckDB warehouse, modelled with dbt"]
+        RAW[("raw<br/>append-only snapshots")]
+        STG["staging<br/>latest snapshot, typed"]
+        INT["intermediate<br/>rents splice, snapshot diff"]
+        MART[("marts<br/>mart_cost_of_living_quarterly<br/>dim_region, dim_quarter<br/>mart_rents_splice_check")]
+    end
+
+    DASH["dashboard/ (Evidence)<br/>static site, reads marts only"]
+    REPORT["reports/<br/>quality_report.md"]
+
+    API --> DL
+    XLSX --> DL
+    DL --> FILES --> RAW --> STG --> INT --> MART
+    STG --> MART
+    MART --> DASH
+
+    PREFECT(["Prefect flow<br/>weekdays 13:00 Sydney"])
+    PREFECT -. "1. download + load" .-> DL
+    PREFECT -. "2. freshness + dbt build (tests)" .-> WH
+    PREFECT -. "3. write" .-> REPORT
+
+    CI(["GitHub Actions CI<br/>every push and PR"])
+    FIX[("tests/fixtures/ci_raw<br/>trimmed real ABS files")]
+    FIX --> CI
+    CI -. "pytest + dbt build, no live ABS calls" .-> WH
 ```
 
-**Orchestration:** `orchestration/flow.py` runs the whole chain as one Prefect flow, scheduled for weekdays at 13:00 Sydney time.
+## Tech stack, and why
 
-**CI:** `.github/workflows/ci.yml` runs pytest and `dbt build` against small, committed fixture files on every push. It makes no live ABS calls.
+| Tool | Why it was chosen |
+|---|---|
+| **Python 3.12** + `requests` | Simple, typed ingestion with retries, timeouts and a polite request rate. |
+| **DuckDB** | A single-file analytical database: no server, fast, free. dbt and Evidence both read it directly. |
+| **dbt Core** (dbt-duckdb) | SQL models with tests, docs and lineage. Each layer (staging, intermediate, marts) is testable. |
+| **Prefect 3** | One local flow with retries, logs and a cron schedule, plus a local UI. No cloud is needed; analytics are switched off. |
+| **pytest** | 70 tests that run offline (external network is blocked in tests). |
+| **GitHub Actions** | Free CI. It runs pytest and `dbt build` against small committed fixtures, never the live ABS. |
+| **Evidence 40** (pinned) | Dashboards as SQL plus Markdown, built to a static site that reads DuckDB read-only. See "Design decisions". |
+| **pip-tools** | One readable `requirements.txt` and a fully pinned `requirements.lock`. |
+
+## Run it from scratch
+
+Requirements: Python 3.12, Node.js 18 or newer (tested on 22), git. On macOS or Linux:
+
+```bash
+git clone https://github.com/<your-github-user>/<your-repo>.git && cd <your-repo>
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.lock
+cp dbt_project/profiles.yml.example dbt_project/profiles.yml
+python ingestion/init_duckdb.py
+python -m orchestration.flow          # download ABS data (4 requests), load, freshness, dbt build, quality report
+pytest                                # 70 offline tests
+```
+
+The flow exits with code 1 and prints `PIPELINE FAILED` if any test or freshness check fails. The report is always written to `reports/quality_report.md`.
+
+### View the dashboard locally
+
+```bash
+cd dashboard
+npm ci                                # exact pinned versions from the lock file
+npm run sources                       # read the marts (read-only)
+npm run dev                           # live preview: http://localhost:3000
+# or build the static site and serve it:
+npm run build:strict && npm run preview
+```
+
+### Schedule it (optional)
+
+```bash
+PREFECT_SERVER_ANALYTICS_ENABLED=false prefect server start                # terminal 1
+PREFECT_API_URL=http://127.0.0.1:4200/api python -m orchestration.serve    # terminal 2
+```
+
+This runs on weekdays at 13:00 Australia/Sydney, while both processes are running and the computer is awake. Details are in [`docs/operations.md`](docs/operations.md).
+
+### Publish the dashboard on GitHub Pages (manual, optional)
+
+Nothing deploys automatically. If you want a public copy, do this yourself:
+
+```bash
+# 1. Build with the repo name as base path (GitHub project pages live under /<your-repo>/)
+cd dashboard
+cp evidence.config.yaml /tmp/evidence.config.yaml.bak
+printf '\ndeployment:\n  basePath: /%s\n' "<your-repo>" >> evidence.config.yaml
+npm run sources && npm run build:strict
+cp /tmp/evidence.config.yaml.bak evidence.config.yaml   # restore the local config
+
+# 2. Put the built files on an orphan gh-pages branch, from a separate clone
+cd /tmp && git clone https://github.com/<your-github-user>/<your-repo>.git site && cd site
+git switch --orphan gh-pages
+cp -R "<path-to-your-repo>/dashboard/build/." .
+touch .nojekyll                                 # keep the _app/ folder (GitHub Pages would hide it)
+git add . && git commit -m "Publish dashboard" && git push origin gh-pages
+```
+
+Then in the repository's **Settings → Pages**, set *Deploy from a branch* to `gh-pages` / `(root)`. The published site contains the mart data (public ABS data, CC BY 4.0). Viewers' browsers fetch DuckDB's Parquet extension from `extensions.duckdb.org`.
+
+## Design decisions (what I learned)
+
+- **Splicing the rents series.** The ABS moved the CPI to monthly in late 2025 and stopped quarterly capital-city tables after 2025-Q3. Monthly city rents only go back to 2022-07. So the rents series joins the archived quarterly series (to 2025-Q3) onto quarterly averages of the monthly series (from 2025-Q4), linked at 2025-Q3.
+  - In the overlap, the two series drift by 0.14% to 0.41%.
+  - This is measured in `mart_rents_splice_check`, tested against a 0.5% tolerance, and flagged on every affected row.
+  - Lesson: measure the join, don't assume it.
+- **Rebasing to 1997-Q3 = 100.** The three series come on different bases: Sep 2025, 2008-09 and 2011-12. 1997-Q3 is the first quarter in which all three exist, because the WPI starts then. Rebasing there makes every line start together, so charts read as cumulative change. Annual % changes are unaffected.
+- **No dbt incremental models.** The whole dbt build takes about 4 seconds. More importantly, the ABS revises history, so staging must re-read the newest download in full. Incremental models would need merge keys and frequent full refreshes, for no benefit. Incremental behaviour lives where it pays off: the raw loader appends each new file once.
+- **Why Evidence, and why version 40.1.8.** Evidence keeps dashboards in git as SQL plus Markdown, reads DuckDB read-only, and builds a plain static site.
+  - In August 2026 Evidence moved to a new CLI tied to its cloud product. The project pins the last open-source npm release from its lock file. That release still builds, but it's frozen: 58 npm advisories in the build toolchain, documented in [`dashboard/README.md`](dashboard/README.md).
+  - Lesson: check that a tool still works the way you remember before building on it.
+- **Tools phone home by default.** Prefect's server, dbt and Evidence each send anonymous usage data unless told not to. All three are switched off. The dashboard's telemetry module is also replaced by a no-op, because Evidence's documented environment-variable opt-out is ignored on the code paths that send events.
+- **Every number must trace to a query.** Writing the findings from queries caught two of my own earlier mistakes in the docs: the real-wage approximation error is 0.40 points, not about 0.3; and the ABS revision flags were on a series the project doesn't use.
+
+## Limitations
+
+- **City vs state.** CPI and rents are measured for capital cities, the WPI for whole states, so each region's comparison is an approximation.
+- **CPI rents are not market rents.** They cover all renting households, net of Commonwealth Rent Assistance, so CRA increases push them down.
+- **The splice adds noise.** Annual rent changes from 2025-Q4 compare the new and archived series, so treat them as ±0.4 points.
+- **Real wage growth is a simple difference** (WPI % − CPI %). The exact ratio form differs by up to 0.40 points (2022-Q4).
+- **Original series only.** The WPI is the price of labour for the same jobs, not average earnings.
+- **Revisions.** ABS revisions change recent values; the pipeline keeps every download and reports what changed.
+- **Unexplained:** Hobart rents fell in the December quarter 2024, and the cause hasn't been verified.
+- Full list: [`docs/data_dictionary.md`](docs/data_dictionary.md#known-limitations) and the dashboard's Methodology page.
+
+## What I would improve next
+
+- **Self-host DuckDB's Parquet extension** in the static site, so viewers' browsers contact no third-party host.
+- **Move off the frozen Evidence 40.** Either migrate to the new Evidence or to a small Python static-site generator, and clear the npm advisories.
+- **Add a dollar-level view** (for example ABS median rents or average weekly earnings) so affordability, not just growth, can be shown.
+- **Add regional (non-capital) data** where the ABS publishes it, to narrow the city-vs-state approximation.
+- **Build and publish the dashboard in CI** as a manual-approval GitHub Pages workflow.
 
 ## Project structure
+
 | Path | Purpose |
 |---|---|
-| `ingestion/` | Download and load code, one module per source; CI fixture tool (`ci_fixtures.py`) |
-| `orchestration/` | Prefect flow (`flow.py`), schedule (`serve.py`), dbt runner (`dbt.py`), quality report (`quality_report.py`) |
-| `dbt_project/` | Seeds, staging, intermediate and mart models; generic and singular tests; source freshness |
-| `tests/` | Offline pytest suite; `fixtures/ci_raw/` holds the CI fixtures |
-| `.github/workflows/` | `ci.yml` (every push/PR) and `live-ingestion.yml` (manual) |
-| `docs/` | Data sources, data dictionary, operations guide |
-| `data/raw/`, `warehouse/`, `reports/`, `logs/` | Generated locally; git-ignored |
-
-## Setup (from a clean clone)
-```bash
-python3.12 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.lock         # exact pinned versions; installs this repo's packages (editable)
-cp .env.example .env                     # optional; no secrets needed
-cp dbt_project/profiles.yml.example dbt_project/profiles.yml
-python ingestion/init_duckdb.py          # create the DuckDB file and schemas
-```
-
-**Dependencies:** `requirements.txt` lists the top-level packages for people to read. `requirements.lock` pins every package and is what you install. It was resolved on macOS and checked package by package for Linux x86_64 / Python 3.12, which is what CI uses. To upgrade:
-```bash
-pip-compile --strip-extras requirements.txt -o requirements.lock
-pip-sync requirements.lock
-```
-`sqlalchemy<2.1` is pinned on purpose: Prefect 3.8.8's scheduler crashes on SQLAlchemy 2.1.
-
-## Run
-
-**Everything, once.** This downloads, loads, checks freshness, runs `dbt build` and writes the report:
-```bash
-python -m orchestration.flow                    # exits 1 and prints PIPELINE FAILED on any failed test
-python -m orchestration.flow --skip-download    # reuse data/raw/
-```
-
-**On a schedule** (weekdays at 13:00 Australia/Sydney), using two terminals:
-```bash
-PREFECT_SERVER_ANALYTICS_ENABLED=false prefect server start          # terminal 1
-PREFECT_API_URL=http://127.0.0.1:4200/api python -m orchestration.serve   # terminal 2
-```
-See [`docs/operations.md`](docs/operations.md) for what must stay running, how to read the report, and what to do when a check fails.
-
-**Individual steps:**
-```bash
-python -m ingestion.run_all [--sources cpi wpi rents] [--skip-download]   # download + load raw
-(cd dbt_project && dbt source freshness --profiles-dir .)                 # freshness checks
-(cd dbt_project && dbt build --profiles-dir .)                            # models + tests
-python -m orchestration.quality_report                                    # report from current state
-(cd dbt_project && dbt docs generate --profiles-dir . && dbt docs serve --profiles-dir .)
-pytest                                                                    # 63 offline tests
-```
-
-Re-running is safe:
-- A download identical to a saved file isn't saved again.
-- A file already in DuckDB isn't loaded twice.
-- An ABS revision becomes a new snapshot. Staging uses the newest one, and the report lists what changed.
-
-## Data quality
-- **dbt build** builds 13 models and seeds and runs 106 tests:
-  - Generic tests: not_null, unique grain, relationships, accepted values and ranges.
-  - Splice: overlap within 0.5%; spliced Australia rents within 0.5% of the official series (warning only).
-  - Mart: no quarter gaps per region; every index = 100 at the base quarter.
-  - Archive: series IDs match their city.
-  - Raw row counts: never shrink between downloads; growth over 25% gives a warning.
-  - Revisions: staging reads only the newest download; ABS revision flags reach the mart.
-- **Source freshness** checks the age of the newest data period. CPI and rents warn after 65 days and error after 95. WPI warns after 150 days and errors after 240. The thresholds come from the ABS release lags.
-- **Quality report** (`reports/quality_report.md`, every run, plus history): row counts, latest period per source, freshness, test results, newest vs previous download, and revised observations.
-
-## Raw tables (2026-10-12 download)
-| Table | Rows | Contents |
-|---|---|---|
-| `raw.abs_cpi_all_groups` | 2,941 | All groups CPI, Australia + 8 capitals; quarterly 1948-Q3 to 2026-Q2, monthly 2024-04 to 2026-08 |
-| `raw.abs_cpi_rents` | 1,382 | CPI Rents; monthly for Australia + 8 capitals from 2022-07, quarterly for Australia from 1972-Q3 |
-| `raw.abs_cpi_capital_cities_quarterly_2025q3` | 231,122 | Final quarterly CPI release, Table 9: all CPI groups by capital city (long format) |
-| `raw.abs_wpi` | 15,312 | WPI quarterly index, by state, sector and industry, 1997-Q3 to 2026-Q2 |
-
-See [`docs/data_sources.md`](docs/data_sources.md) for dataflow IDs, licences and known data issues.
-
-## dbt models
-| Schema | Models |
-|---|---|
-| `reference` (seeds) | `region_mapping`, `abs_archive_rents_series` |
-| `staging` (views) | `stg_abs__cpi_all_groups`, `stg_abs__cpi_rents`, `stg_abs__cpi_rents_archive`, `stg_abs__wpi` |
-| `intermediate` (views) | `int_rents_monthly_to_quarterly`, `int_rents_splice_overlap`, `int_rents_quarterly_spliced`, `int_raw_snapshot_changes` |
-| `marts` (tables) | `dim_region`, `dim_quarter`, **`mart_cost_of_living_quarterly`** |
-
-The main output is `marts.mart_cost_of_living_quarterly`:
-- **Grain:** one row per quarter × region.
-- **Range:** 1997-Q3 to the latest quarter that all three series cover (1,044 rows).
-- **Contents:** CPI, rents and WPI rebased to 1997-Q3 = 100, annual % changes, and real wage growth.
-- **Flags:** rents splice flags, revision flags, and `missing_reason`.
-
-No dbt model is incremental; the raw layer is. The reasons for each model are in [`docs/data_dictionary.md`](docs/data_dictionary.md), along with the columns and caveats.
-
-## Progress
-- [x] Day 1: project scaffold and DuckDB initialised
-- [x] Week 1: ingest three datasets (CPI, WPI, CPI rents) into `data/raw/` and DuckDB `raw`; offline tests
-- [x] Week 2: dbt staging, rents splice, dimensions and quarterly mart, with tests and a data dictionary; lock file
-- [x] Week 3: freshness, row-count and revision checks, quality report, Prefect flow and schedule, CI with fixtures
-- [ ] Week 4: dashboard (Evidence), architecture diagram, findings write-up
+| `ingestion/` | Download and load code, one module per source, plus the CI fixture tool |
+| `dbt_project/` | Seeds; staging, intermediate and mart models; generic and singular tests; freshness |
+| `orchestration/` | Prefect flow and schedule, dbt runner, quality report, findings runner |
+| `dashboard/` | Evidence site: `sources/` (marts only) and `pages/` |
+| `tests/` | Offline pytest suite and CI fixtures |
+| `docs/` | Data sources, data dictionary, operations guide, findings and their queries |
+| `.github/workflows/` | `ci.yml` (every push and PR), `live-ingestion.yml` (manual) |
 
 ## Data and attribution
-Based on Australian Bureau of Statistics data: Consumer Price Index, Australia (6401.0) and Wage Price Index, Australia (6345.0), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+Based on Australian Bureau of Statistics data: Consumer Price Index, Australia (6401.0) and Wage Price Index, Australia (6345.0), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The figures shown are derived (rebased, averaged, spliced and differenced) and are not ABS publications. Dataflow IDs, URLs and licence notes: [`docs/data_sources.md`](docs/data_sources.md).

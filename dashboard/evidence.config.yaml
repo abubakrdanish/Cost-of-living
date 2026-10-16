@@ -1,0 +1,36 @@
+# Evidence 40.1.8 (open-source, pinned). See dashboard/README.md.
+
+appearance:
+  default: system
+  switcher: true
+
+theme:
+  # Colour follows the entity on every page: CPI = blue, rents = orange,
+  # wages (WPI) = aqua. Slots 1-3 of a colour-blind-safe categorical palette,
+  # validated for all pairs (CVD dE >= 9.2 light / 9.4 dark) with separate
+  # steps for the dark surface. Light-mode aqua is under 3:1 contrast, so
+  # every chart also has a legend, distinct line styles and a data table.
+  colorPalettes:
+    default:
+      light: ["#2a78d6", "#eb6834", "#1baf7a"]
+      dark: ["#3987e5", "#d95926", "#199e70"]
+  colors:
+    cpi:
+      light: "#2a78d6"
+      dark: "#3987e5"
+    rents:
+      light: "#eb6834"
+      dark: "#d95926"
+    wages:
+      light: "#1baf7a"
+      dark: "#199e70"
+    # Neutral ink for reference lines and the splice marker.
+    reference:
+      light: "#52514e"
+      dark: "#c3c2b7"
+
+plugins:
+  components:
+    "@evidence-dev/core-components": {}
+  datasources:
+    "@evidence-dev/duckdb": {}

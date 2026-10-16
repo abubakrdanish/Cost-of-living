@@ -17,7 +17,7 @@ The flow runs these steps in order:
 | Download | 4 polite requests to the ABS, one source at a time, at least 2 s apart. Identical files aren't saved again. | The HTTP client retries 5 times with backoff, then Prefect retries the source twice (after 60 s and 120 s). If it still fails, the other sources continue and the run fails at the end. |
 | Load raw | New files are appended to DuckDB `raw`. Files already loaded are skipped. | dbt is skipped and the run fails. |
 | `dbt source freshness` | Checks how old the newest data period is (see section 4). | Error: the run fails. Warning: it's listed in the report only. |
-| `dbt build` | Builds seeds and models and runs every test (119 checks). | Any failed or errored test or model fails the run. Models downstream of a failure are **skipped and keep their previous contents**. |
+| `dbt build` | Builds seeds and models and runs every test (128 checks). | Any failed or errored test or model fails the run. Models downstream of a failure are **skipped and keep their previous contents**. |
 | Quality report | Writes `reports/quality_report.md` and `.json`. | It's written **even when an earlier step failed**. |
 
 **What "fails loudly" means:**
