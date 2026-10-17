@@ -21,7 +21,9 @@ env:
 jobs:
   test:
     name: pytest + dbt build (fixtures)
-    runs-on: ubuntu-latest
+    # Pinned because ubuntu-latest moves to Ubuntu 26 from 2026-10-19.
+    # Revisit once the pipeline has been checked on ubuntu-26.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Check out
