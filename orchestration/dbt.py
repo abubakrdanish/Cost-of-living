@@ -25,7 +25,7 @@ RUN_RESULTS = "run_results.json"
 SOURCES = "sources.json"
 
 # dbt result statuses that count as problems.
-TEST_FAILURE_STATUSES = {"fail", "error", "runtime error"}
+BUILD_FAILURE_STATUSES = {"fail", "error", "runtime error"}
 FRESHNESS_FAILURE_STATUSES = {"error", "runtime error"}
 
 
@@ -89,8 +89,6 @@ def run_dbt(args: list[str], dbt_vars: dict | None = None, tail_lines: int = 40)
     return DbtResult(command=command, returncode=process.returncode, output_tail=tail)
 
 
-# ---- Artifacts ---------------------------------------------------------------
-
 def _load(path: Path) -> dict | None:
     if not path.exists():
         return None
@@ -125,7 +123,7 @@ def summarise_run_results(path: Path) -> dict | None:
         "generated_at": data.get("metadata", {}).get("generated_at"),
         "counts": counts,
         "problems": problems,
-        "has_failures": any(p["status"] in TEST_FAILURE_STATUSES for p in problems),
+        "has_failures": any(p["status"] in BUILD_FAILURE_STATUSES for p in problems),
     }
 
 

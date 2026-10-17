@@ -1,23 +1,10 @@
-"""Build and check the small raw-data fixtures that CI runs `dbt build` against.
+"""Build and check the raw-data fixtures CI runs `dbt build` against.
 
-CI never calls the ABS. Instead it loads tests/fixtures/ci_raw/, which is cut
-from real downloads in data/raw/:
+The fixtures are cut from real downloads in data/raw/ (from 2020-Q3), plus one
+deliberately edited older rents snapshot. Details: tests/fixtures/ci_raw/README.md.
 
-* CSV fixtures keep the real header and a subset of the real lines, byte for
-  byte (no values are edited), from 2020-Q3 onward, plus a few rows the
-  staging models must filter out (other index codes, seasonally adjusted,
-  other WPI sectors).
-* The archive XLSX fixture keeps the real ABS workbook layout and metadata
-  rows for the Rents series and one unrelated series, from 2020-Q3 onward.
-* One deliberately edited, older rents snapshot is added so CI exercises the
-  revision and row-count checks. It is the only edited file; see
-  tests/fixtures/ci_raw/README.md.
-
-Keeping fixtures in sync with the real schema:
     python -m ingestion.ci_fixtures check      # compare fixture layout with data/raw
     python -m ingestion.ci_fixtures generate   # rebuild fixtures from data/raw
-The manual "live ingestion" GitHub workflow runs `check` after a real
-download, so a change in the ABS file layout shows up there.
 """
 from __future__ import annotations
 
@@ -83,7 +70,7 @@ def _keep_wpi(row: Row) -> bool:
                 and _code(row["INDUSTRY"]) == "TOT" and _code(row["TSEST"]) == "10")
     if headline:
         return row["TIME_PERIOD"] >= FIRST_QUARTER
-    # A few decoys staging must filter out: Victoria private sector, Australia SA.
+    # Decoys staging must drop: Victoria private sector, Australia seasonally adjusted.
     decoy = ((_code(row["SECTOR"]) == "1" and _code(row["REGION"]) == "2"
               and _code(row["INDUSTRY"]) == "TOT" and _code(row["TSEST"]) == "10")
              or (_code(row["INDEX"]) == "THRPEB" and _code(row["SECTOR"]) == "7"
@@ -96,7 +83,6 @@ CSV_FILTERS: dict[str, Callable[[Row], bool]] = {
     rents.CPI_RENTS.name: _keep_rents,
     wpi.WPI_INDEX.name: _keep_wpi,
 }
-ARCHIVE = rents.CPI_CAPITAL_CITIES_QUARTERLY_ARCHIVE
 ARCHIVE_EXTRA_DESCRIPTION = "Index Numbers ;  All groups CPI ;  Melbourne ;"
 
 
@@ -110,8 +96,6 @@ def latest_file(dataset: RawDataset, root: Path) -> Path:
         raise FileNotFoundError(f"No raw file for {dataset.name} under {root}; run ingestion first")
     return files[-1]
 
-
-# ---- CSV --------------------------------------------------------------------
 
 def trim_csv(text: str, keep: Callable[[Row], bool]) -> str:
     """Header plus the original lines (line endings included) whose row passes `keep`."""
@@ -151,8 +135,6 @@ def make_older_rents_snapshot(text: str) -> str:
     return "".join(out)
 
 
-# ---- XLSX -------------------------------------------------------------------
-
 def _selected_columns(description_row: tuple) -> list[int]:
     return [0] + [i for i, d in enumerate(description_row)
                   if d and (";  Rents ;" in d or d.strip() == ARCHIVE_EXTRA_DESCRIPTION.strip())]
@@ -182,8 +164,6 @@ def trim_archive_workbook(source: Path, target: Path) -> None:
     src.close()
     out.save(target)
 
-
-# ---- Commands -----------------------------------------------------------------
 
 def generate(raw_root: Path = RAW_DATA_DIR, fixture_root: Path = FIXTURE_DIR) -> list[Path]:
     """Rebuild every fixture from the newest real raw files."""

@@ -17,10 +17,10 @@ The flow runs these steps in order:
 | Download | 4 polite requests to the ABS, one source at a time, at least 2 s apart. Identical files aren't saved again. | The HTTP client retries 5 times with backoff, then Prefect retries the source twice (after 60 s and 120 s). If it still fails, the other sources continue and the run fails at the end. |
 | Load raw | New files are appended to DuckDB `raw`. Files already loaded are skipped. | dbt is skipped and the run fails. |
 | `dbt source freshness` | Checks how old the newest data period is (see section 4). | Error: the run fails. Warning: it's listed in the report only. |
-| `dbt build` | Builds seeds and models and runs every test (128 checks). | Any failed or errored test or model fails the run. Models downstream of a failure are **skipped and keep their previous contents**. |
-| Quality report | Writes `reports/quality_report.md` and `.json`. | It's written **even when an earlier step failed**. |
+| `dbt build` | Builds seeds and models and runs every test (128 checks). | Any failed or errored test or model fails the run. Models downstream of a failure are skipped and keep their previous contents. |
+| Quality report | Writes `reports/quality_report.md` and `.json`. | It's written even when an earlier step failed. |
 
-**What "fails loudly" means:**
+What "fails loudly" means:
 - The process exits with code 1.
 - `PIPELINE FAILED: <reasons>` is printed to stderr.
 - The Prefect run ends in state `Failed`.
@@ -30,7 +30,7 @@ To prove it, tighten a test threshold for one run: `python -m orchestration.flow
 
 ## 2. Schedule it (local)
 
-The schedule is **weekdays at 13:00 Australia/Sydney**. The ABS publishes at 11:30 Canberra time, so a release is picked up the same day. On days with no release, a run makes 4 small requests and changes nothing.
+The schedule is weekdays at 13:00 Australia/Sydney. The ABS publishes at 11:30 Canberra time, so a release is picked up the same day. On days with no release, a run makes 4 small requests and changes nothing.
 
 You need three things running:
 
@@ -44,9 +44,9 @@ export PREFECT_API_URL=http://127.0.0.1:4200/api
 python -m orchestration.serve
 ```
 
-1. **The Prefect server** stores the schedule and creates the upcoming runs.
-2. **The `serve` process** polls the server and executes the runs. If it isn't running, nothing executes. On Ctrl+C, the deployment's schedule is paused, and starting `serve` again resumes it.
-3. **The computer must be awake at 13:00.** Missed runs aren't caught up, but the next run fetches anything missed, because ingestion is idempotent.
+1. The Prefect server stores the schedule and creates the upcoming runs.
+2. The `serve` process polls the server and executes the runs. If it isn't running, nothing executes. On Ctrl+C, the deployment's schedule is paused, and starting `serve` again resumes it.
+3. The computer must be awake at 13:00. Missed runs aren't caught up, but the next run fetches anything missed, because ingestion is idempotent.
 
 Useful commands (with `PREFECT_API_URL` set):
 
@@ -58,9 +58,9 @@ prefect flow-run ls                                                # recent and 
 
 Verified on 2026-10-14: the server created upcoming runs for Thu 15 Oct, Fri 16 Oct and Mon 19 Oct at 13:00 AEDT, and a run triggered through the deployment completed.
 
-**Troubleshooting:**
-- **No runs are scheduled.** Check the server log for `Can't evaluate bulk DML statement`. That's Prefect 3.8.8 on SQLAlchemy 2.1, and `requirements.lock` pins SQLAlchemy 2.0.54 to avoid it. Reinstall with `pip-sync requirements.lock`.
-- **Prefer cron or launchd?** `python -m orchestration.flow` is a normal command that returns exit code 1 on failure, so a plain crontab entry works without a Prefect server. You lose the Prefect UI and run history, though.
+### Troubleshooting
+- No runs are scheduled. Check the server log for `Can't evaluate bulk DML statement`. That's Prefect 3.8.8 on SQLAlchemy 2.1, and `requirements.lock` pins SQLAlchemy 2.0.54 to avoid it. Reinstall with `pip-sync requirements.lock`.
+- Prefer cron or launchd? `python -m orchestration.flow` is a normal command that returns exit code 1 on failure, so a plain crontab entry works without a Prefect server. You lose the Prefect UI and run history, though.
 
 ## 3. Read the quality report
 
@@ -68,18 +68,18 @@ The latest report is `reports/quality_report.md` (and `.json`). Every run is als
 
 | Section | What to look for |
 |---|---|
-| **Warnings** | Read this first. Each line is something a person should check. "None" means a clean run. |
+| Warnings | Read this first. Each line is something a person should check. "None" means a clean run. |
 | Steps | The result of each step: new file or unchanged per source, rows loaded, freshness status, and dbt counts. |
 | Latest period per source | The newest month or quarter of each series, and the mart's first and last quarter. |
 | Freshness | The age of the newest data period vs the warn and error limits. |
 | dbt build | Counts by status, and every test or model that didn't pass. |
 | Raw downloads: newest vs previous | Row counts of the two newest downloads per table. Growth is normal; shrinking is a problem. |
-| Changes since previous download | Observations added (new periods), removed, or **revised**, with up to 10 examples of revised values. |
+| Changes since previous download | Observations added (new periods), removed, or revised, with up to 10 examples of revised values. |
 | Row counts | Every table and view in each schema. |
 
 ## 4. Freshness: what it checks
 
-Freshness measures **the age of the newest data period**: today minus the last day of the newest month or quarter. It doesn't measure when the data was downloaded. That way it catches both a broken pipeline and a late or missing ABS release.
+Freshness measures the age of the newest data period: today minus the last day of the newest month or quarter. It doesn't measure when the data was downloaded. That way it catches both a broken pipeline and a late or missing ABS release.
 
 | Source | Normal age | Warn | Error | Why |
 |---|---|---|---|---|
@@ -106,6 +106,6 @@ Freshness measures **the age of the newest data period**: today minus the last d
 
 ## 6. CI (GitHub Actions)
 
-- **`ci.yml`** runs on every push and pull request. It installs `requirements.lock` on Ubuntu, runs `pytest` (network blocked), loads `tests/fixtures/ci_raw` and runs `dbt build`, then uploads the quality report and `run_results.json` as an artifact. It never calls the ABS.
-- **`live-ingestion.yml`** is manual only (Actions tab → "Live ingestion check" → Run workflow). It runs the real flow, then checks the CI fixtures still match the real ABS file layout.
-- **Keeping the fixtures current:** if `ingestion.ci_fixtures check` fails, run the ingestion locally, then `python -m ingestion.ci_fixtures generate`. Review the diff and commit. See `tests/fixtures/ci_raw/README.md`.
+- `ci.yml` runs on every push and pull request. It installs `requirements.lock` on Ubuntu, runs `pytest` (network blocked), loads `tests/fixtures/ci_raw` and runs `dbt build`, then uploads the quality report and `run_results.json` as an artifact. It never calls the ABS.
+- `live-ingestion.yml` is manual only (Actions tab → "Live ingestion check" → Run workflow). It runs the real flow, then checks the CI fixtures still match the real ABS file layout.
+- Keeping the fixtures current: if `ingestion.ci_fixtures check` fails, run the ingestion locally, then `python -m ingestion.ci_fixtures generate`. Review the diff and commit. See `tests/fixtures/ci_raw/README.md`.

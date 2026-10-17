@@ -19,7 +19,7 @@ with regions as (
 
 ),
 
--- One CTE per series, keyed by region_key and quarter -------------------------
+-- One CTE per series, keyed by region_key and quarter.
 
 cpi as (
 
@@ -60,8 +60,8 @@ wpi as (
 
 ),
 
--- Annual % change: same quarter one year earlier (a join, not lag(), so a gap
--- in a series can never pair the wrong quarters) --------------------------------
+-- Annual % change against the same quarter a year earlier. A join rather than
+-- lag(), so a gap in a series can never pair the wrong quarters.
 
 cpi_changes as (
 
@@ -102,7 +102,7 @@ wpi_changes as (
 
 ),
 
--- Range and spine ---------------------------------------------------------------
+-- Range and spine.
 
 series_bounds as (
 
@@ -129,7 +129,7 @@ spine as (
 
 ),
 
--- Base quarter values for rebasing (per region) ---------------------------------
+-- Base-quarter value per region, for rebasing.
 
 base as (
 

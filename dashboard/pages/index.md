@@ -70,11 +70,11 @@ from marts.cost_of_living_quarterly
 where quarter_start_date = (select max(quarter_start_date) from marts.cost_of_living_quarterly)
 ```
 
-How have **prices, rents and wages** changed in Australia since 1997, by state and capital city? This dashboard compares three official Australian Bureau of Statistics (ABS) measures, quarter by quarter, from {range[0]?.first_quarter} to {range[0]?.latest_quarter} (the quarter ending {range[0]?.latest_quarter_end}):
+How have prices, rents and wages changed in Australia since 1997, by state and capital city? This dashboard compares three official Australian Bureau of Statistics (ABS) measures, quarter by quarter, from {range[0]?.first_quarter} to {range[0]?.latest_quarter} (the quarter ending {range[0]?.latest_quarter_end}):
 
-- the **Consumer Price Index** (CPI, all groups), which measures prices paid by households in each capital city;
-- the CPI **Rents** component, which measures rents paid by renting households;
-- the **Wage Price Index** (WPI), which measures the price of labour (hourly pay rates for the same jobs over time) in each state.
+- the Consumer Price Index (CPI, all groups), which measures prices paid by households in each capital city;
+- the CPI Rents component, which measures rents paid by renting households;
+- the Wage Price Index (WPI), which measures the price of labour (hourly pay rates for the same jobs over time) in each state.
 
 Every number on these pages is calculated from the pipeline's `marts` tables. The figures are index changes, not dollar amounts. CPI and rents describe capital cities, while wages describe whole states; see [Methodology](/methodology).
 
@@ -94,7 +94,7 @@ Every number on these pages is calculated from the pipeline's `marts` tables. Th
 3. **Prices are again rising faster than wages.** In {range[0]?.latest_quarter}, real wage growth was negative in every one of the nine regions (see the table below).
 4. **Rents grew very unevenly across capitals.** Since 1997-Q3, rents rose most in {rents_extremes[0]?.fastest_city} (+{rents_extremes[0]?.fastest_pct?.toFixed(1)}%) and least in {rents_extremes[0]?.slowest_city} (+{rents_extremes[0]?.slowest_pct?.toFixed(1)}%). Rents outpaced the state's wages in only {rents_extremes[0]?.cities_rents_beat_wages} of the eight capitals.
 
-**What this does not show:** why any of this happened; levels or affordability in dollars; market asking rents for new leases (CPI rents cover all renting households and are net of Commonwealth Rent Assistance); or anything about regional areas outside the capital cities.
+What this does not show: why any of this happened; levels or affordability in dollars; market asking rents for new leases (CPI rents cover all renting households and are net of Commonwealth Rent Assistance); or anything about regional areas outside the capital cities.
 
 <DataTable data={latest_by_region} rows=all>
   <Column id=region_label title="Region (capital city)" />

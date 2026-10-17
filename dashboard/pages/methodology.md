@@ -11,13 +11,13 @@ sidebar_position: 5
 | Rents: CPI rents component | 6401.0 | `ABS,CPI,2.0.0`, index `30014`, Original (monthly from 2022-07), plus the [final quarterly release, Table 9](https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/consumer-price-index-australia/sep-quarter-2025) (1972-Q3 to 2025-Q3) | Quarterly (spliced) |
 | Wages: Wage Price Index | [Wage Price Index, Australia (6345.0)](https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/wage-price-index-australia/latest-release) | `ABS,WPI,1.2.0`: total hourly rates of pay excluding bonuses, private and public sector, all industries, Original | Quarterly |
 
-**Attribution.** Based on Australian Bureau of Statistics data: Consumer Price Index, Australia (6401.0) and Wage Price Index, Australia (6345.0), licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). The figures shown are derived from ABS data (rebased, averaged, spliced and differenced) and are not ABS publications.
+Attribution. Based on Australian Bureau of Statistics data: Consumer Price Index, Australia (6401.0) and Wage Price Index, Australia (6345.0), licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). The figures shown are derived from ABS data (rebased, averaged, spliced and differenced) and are not ABS publications.
 
-**Index base.** Every index on these pages is rebased so that **1997-Q3 = 100** for each region. 1997-Q3 is the first quarter in which all three series exist (the WPI starts then). Rebasing changes the starting point only; annual % changes are unaffected.
+Index base. Every index on these pages is rebased so that 1997-Q3 = 100 for each region. 1997-Q3 is the first quarter in which all three series exist (the WPI starts then). Rebasing changes the starting point only; annual % changes are unaffected.
 
 ## City prices vs state wages (an approximation)
 
-The CPI and rents are measured for **capital cities**; the WPI is measured for **whole states and territories**. Each region pairs a capital with its state, so comparing, say, Melbourne prices with Victorian wages is an approximation. It is weakest where many people live outside the capital.
+The CPI and rents are measured for capital cities; the WPI is measured for whole states and territories. Each region pairs a capital with its state, so comparing, say, Melbourne prices with Victorian wages is an approximation. It is weakest where many people live outside the capital.
 
 ```sql regions
 select region_name, capital_city, state_name, comparison_note
@@ -82,13 +82,13 @@ join marts.cost_of_living_quarterly prev
 where cur.region_key = 'TAS' and cur.quarter_label = '2024-Q4'
 ```
 
-- **CPI rents are not market rents.** They cover all renting households and are net of Commonwealth Rent Assistance, so they rise more slowly than advertised rents and drop when CRA increases.
-- **Unexplained: Hobart rents in the December quarter 2024** fell {hobart_dec_2024[0]?.fall_pct?.toFixed(1)}% on the previous quarter. The cause has not been verified (a CRA change is plausible but unconfirmed).
-- **The WPI is not average earnings.** It prices the same jobs over time, so it excludes promotions, job changes, hours worked and bonuses.
-- **Original series throughout.** States have no seasonally adjusted WPI, so the Original series is used everywhere. The Australia row therefore differs slightly from the ABS's seasonally adjusted headline.
-- **Real wage growth is a simple difference** of annual % changes, not the exact ratio (see [Real wage growth](/real-wages) for the size of the gap).
-- **Capital cities only.** The CPI covers metropolitan households; regional Australia is not measured.
-- **Inferred archive details.** The archive's index base (2011-12 = 100) was confirmed from the data rather than stated in the file, and its two identical Rents columns were matched to the expenditure class by column order. Neither affects the values shown.
-- **No causal claims.** These pages show how the measures moved together, not why.
+- CPI rents are not market rents. They cover all renting households and are net of Commonwealth Rent Assistance, so they rise more slowly than advertised rents and drop when CRA increases.
+- Unexplained: Hobart rents in the December quarter 2024 fell {hobart_dec_2024[0]?.fall_pct?.toFixed(1)}% on the previous quarter. The cause has not been verified (a CRA change is plausible but unconfirmed).
+- The WPI is not average earnings. It prices the same jobs over time, so it excludes promotions, job changes, hours worked and bonuses.
+- Original series throughout. States have no seasonally adjusted WPI, so the Original series is used everywhere. The Australia row therefore differs slightly from the ABS's seasonally adjusted headline.
+- Real wage growth is a simple difference of annual % changes, not the exact ratio (see [Real wage growth](/real-wages) for the size of the gap).
+- Capital cities only. The CPI covers metropolitan households; regional Australia is not measured.
+- Inferred archive details. The archive's index base (2011-12 = 100) was confirmed from the data rather than stated in the file, and its two identical Rents columns were matched to the expenditure class by column order. Neither affects the values shown.
+- No causal claims. These pages show how the measures moved together, not why.
 
 Full documentation: `docs/data_sources.md`, `docs/data_dictionary.md` and `docs/operations.md` in the project repository.

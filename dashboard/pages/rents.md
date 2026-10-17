@@ -3,7 +3,7 @@ title: Rents
 sidebar_position: 4
 ---
 
-CPI rents measure what **all renting households** pay, not advertised rents for new leases, and they are measured **net of Commonwealth Rent Assistance** (CRA). That is why the index moves more slowly than headline asking rents, and why CRA increases push it down (Hobart rents fell {hobart_dec_2023[0]?.fall_pct?.toFixed(1)}% in the December quarter 2023, which the ABS attributes to the 15% CRA increase from 20 September 2023).
+CPI rents measure what all renting households pay, not advertised rents for new leases, and they are measured net of Commonwealth Rent Assistance (CRA). That is why the index moves more slowly than headline asking rents, and why CRA increases push it down (Hobart rents fell {hobart_dec_2023[0]?.fall_pct?.toFixed(1)}% in the December quarter 2023, which the ABS attributes to the 15% CRA increase from 20 September 2023).
 
 ```sql hobart_dec_2023
 select 100 * (1 - cur.rents_index / prev.rents_index) as fall_pct
@@ -77,8 +77,8 @@ from marts.rents_splice_check where region_key = '${inputs.region.value}'
 
 The ABS stopped publishing quarterly CPI by capital city after the September quarter 2025, when the CPI became fully monthly. To keep one quarterly rents series per city:
 
-1. up to **2025-Q3** we use the official archived quarterly series;
-2. from **{splice[0]?.splice_quarter}** (the **splice point**, dashed line) we use the average of each quarter's three monthly values;
+1. up to 2025-Q3 we use the official archived quarterly series;
+2. from {splice[0]?.splice_quarter} (the splice point, dashed line) we use the average of each quarter's three monthly values;
 3. the archive is rescaled to the new index base using the ratio of the two series in 2025-Q3.
 
 The two series don't agree exactly. Over the {splice_range[0]?.overlap_quarters} quarters where both exist, their ratio drifts by up to {selected_check[0]?.max_abs_deviation_pct?.toFixed(2)}% for {selected_check[0]?.region_name} (largest in {selected_check[0]?.max_deviation_quarter}), and between {splice_range[0]?.smallest?.toFixed(2)}% and {splice_range[0]?.largest?.toFixed(2)}% across all regions. So annual changes from {splice[0]?.crosses_from_label} to {splice[0]?.crosses_to_label} (shaded), which compare a new-series quarter with an archived one, carry up to about ±0.4 percentage points of method noise. Full table: [Methodology](/methodology).

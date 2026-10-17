@@ -1,11 +1,9 @@
 """Save downloaded files unchanged under data/raw/<source>/ with a date stamp.
 
-Idempotency rule: a download whose bytes match a file already saved for the
-same dataset is not written again. New content gets a new date-stamped file,
-so revisions are kept side by side instead of overwriting history.
-
-Each data file gets a `<file>.meta.json` sidecar recording where and when it
-was downloaded.
+A download whose bytes match a file already saved for the same dataset is not
+written again. New content gets a new date-stamped file, so revisions sit side
+by side instead of overwriting history. Each file gets a `<file>.meta.json`
+sidecar recording where and when it was downloaded.
 """
 from __future__ import annotations
 
@@ -32,10 +30,6 @@ def sha256_bytes(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 
-def sha256_file(path: Path) -> str:
-    return sha256_bytes(path.read_bytes())
-
-
 def stamped_filename(stem: str, ext: str, now: datetime) -> str:
     """`abs_cpi` + `csv` -> `abs_cpi_20261012.csv`."""
     return f"{stem}_{now:%Y%m%d}.{ext.lstrip('.')}"
@@ -51,7 +45,7 @@ def list_data_files(directory: Path, stem: str, ext: str) -> list[Path]:
 
 def find_identical(directory: Path, stem: str, ext: str, digest: str) -> Path | None:
     for existing in list_data_files(directory, stem, ext):
-        if sha256_file(existing) == digest:
+        if sha256_bytes(existing.read_bytes()) == digest:
             return existing
     return None
 

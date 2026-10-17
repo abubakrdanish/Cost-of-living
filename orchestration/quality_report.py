@@ -1,18 +1,10 @@
 """Data quality report written after every pipeline run.
 
-Outputs (git-ignored):
-    reports/quality_report.md / .json          latest run
-    reports/history/quality_report_<UTC>.md/.json   every run
+Writes reports/quality_report.md and .json, plus a timestamped copy in
+reports/history/. A missing table or dbt artifact is reported as unavailable
+rather than raising, so a failed run still produces a report.
 
-Contents: run status and step results, row counts per table, raw snapshot
-sizes vs the previous download, latest period per source, freshness, dbt test
-results, what changed since the previous download (revisions), and a list of
-warnings. Building the report is best-effort: a missing table or artifact is
-reported as unavailable instead of crashing, so a failed run still explains
-itself.
-
-Run on its own (e.g. after a manual `dbt build`):
-    python -m orchestration.quality_report
+Run on its own: python -m orchestration.quality_report
 """
 from __future__ import annotations
 
@@ -35,7 +27,7 @@ SCHEMAS = ("raw", "reference", "staging", "intermediate", "marts")
 SNAPSHOT_TABLES = ("abs_cpi_all_groups", "abs_cpi_rents",
                    "abs_cpi_capital_cities_quarterly_2025q3", "abs_wpi")
 
-# (label, SQL returning one value) for the "latest period per source" section.
+# Label -> query returning one value, for "Latest period per source".
 LATEST_PERIOD_QUERIES = {
     "CPI all groups, monthly": "select max(time_period) from staging.stg_abs__cpi_all_groups where frequency_code = 'M'",
     "CPI all groups, quarterly": "select max(time_period) from staging.stg_abs__cpi_all_groups where frequency_code = 'Q'",
@@ -51,8 +43,6 @@ LATEST_PERIOD_QUERIES = {
     "Mart last quarter": "select max(quarter_label) from marts.mart_cost_of_living_quarterly",
 }
 
-
-# ---- Collecting -----------------------------------------------------------------
 
 def _scalar(con: duckdb.DuckDBPyConnection, sql: str):
     try:
@@ -183,8 +173,6 @@ def find_warnings(report: dict, db_exists: bool = True) -> list[str]:
                             "(see 'Changes since previous download'); staging uses the new values")
     return warnings
 
-
-# ---- Rendering ------------------------------------------------------------------
 
 def _table(headers: list[str], rows: list[list]) -> str:
     def cell(v):

@@ -1,12 +1,12 @@
 """Load saved raw files into DuckDB `raw.<dataset>` tables.
 
-Each raw table keeps every downloaded snapshot, tagged with `_source_file`
-and `_loaded_at`. A file that is already in the table is skipped, so
-re-running never duplicates rows. Staging models (dbt, week 2) pick the
-latest snapshot; older snapshots let us see ABS revisions.
+Each table keeps every downloaded snapshot, tagged with `_source_file` and
+`_loaded_at`. Files already in the table are skipped, so re-running never
+duplicates rows. dbt staging reads the newest snapshot; older ones show ABS
+revisions.
 
-SDMX-CSV columns are loaded as VARCHAR with names normalised
-('TIME_PERIOD: Time Period' -> time_period); values are untouched.
+SDMX-CSV values are loaded as text, unchanged; only the column names are
+normalised ('TIME_PERIOD: Time Period' -> time_period).
 """
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ def _quote_ident(name: str) -> str:
 
 def table_exists(con: duckdb.DuckDBPyConnection, table: str) -> bool:
     return con.execute(
-        "SELECT count(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ?",
+        "select count(*) from information_schema.tables where table_schema = ? and table_name = ?",
         [RAW_SCHEMA, table],
     ).fetchone()[0] > 0
 
@@ -54,28 +54,28 @@ def table_exists(con: duckdb.DuckDBPyConnection, table: str) -> bool:
 def loaded_files(con: duckdb.DuckDBPyConnection, table: str) -> set[str]:
     if not table_exists(con, table):
         return set()
-    rows = con.execute(f"SELECT DISTINCT _source_file FROM {RAW_SCHEMA}.{table}").fetchall()
+    rows = con.execute(f"select distinct _source_file from {RAW_SCHEMA}.{table}").fetchall()
     return {r[0] for r in rows}
 
 
 def _sdmx_select(con: duckdb.DuckDBPyConnection, path: Path) -> str:
-    """SELECT list + FROM clause reading a CSV as text with normalised column names."""
+    """A select reading a CSV as text, with normalised column names."""
     source = f"read_csv({_sql_string(str(path))}, header = true, all_varchar = true)"
-    headers = [row[0] for row in con.execute(f"DESCRIBE SELECT * FROM {source}").fetchall()]
-    columns = ", ".join(f"{_quote_ident(h)} AS {normalise_column_name(h)}" for h in headers)
-    return f"SELECT {columns} FROM {source}"
+    headers = [row[0] for row in con.execute(f"describe select * from {source}").fetchall()]
+    columns = ", ".join(f"{_quote_ident(h)} as {normalise_column_name(h)}" for h in headers)
+    return f"select {columns} from {source}"
 
 
 def _insert(con: duckdb.DuckDBPyConnection, table: str, select_sql: str,
             source_file: str, loaded_at: datetime) -> int:
     """Create the table on first use, then append rows by column name."""
-    lineage = f"{_sql_string(source_file)} AS _source_file, " \
-              f"CAST({_sql_string(loaded_at.isoformat())} AS TIMESTAMPTZ) AS _loaded_at"
-    wrapped = f"SELECT src.*, {lineage} FROM ({select_sql}) AS src"
-    con.execute(f"CREATE TABLE IF NOT EXISTS {RAW_SCHEMA}.{table} AS {wrapped} LIMIT 0")
-    before = con.execute(f"SELECT count(*) FROM {RAW_SCHEMA}.{table}").fetchone()[0]
-    con.execute(f"INSERT INTO {RAW_SCHEMA}.{table} BY NAME {wrapped}")
-    after = con.execute(f"SELECT count(*) FROM {RAW_SCHEMA}.{table}").fetchone()[0]
+    lineage = (f"{_sql_string(source_file)} as _source_file, "
+               f"cast({_sql_string(loaded_at.isoformat())} as timestamptz) as _loaded_at")
+    wrapped = f"select src.*, {lineage} from ({select_sql}) as src"
+    con.execute(f"create table if not exists {RAW_SCHEMA}.{table} as {wrapped} limit 0")
+    before = con.execute(f"select count(*) from {RAW_SCHEMA}.{table}").fetchone()[0]
+    con.execute(f"insert into {RAW_SCHEMA}.{table} by name {wrapped}")
+    after = con.execute(f"select count(*) from {RAW_SCHEMA}.{table}").fetchone()[0]
     return after - before
 
 
@@ -90,7 +90,7 @@ def load_file(con: duckdb.DuckDBPyConnection, dataset: RawDataset, path: Path,
             frame = parse_workbook(path)
             con.register("xlsx_frame", frame)
             try:
-                inserted = _insert(con, dataset.table, "SELECT * FROM xlsx_frame",
+                inserted = _insert(con, dataset.table, "select * from xlsx_frame",
                                    path.name, loaded_at)
             finally:
                 con.unregister("xlsx_frame")
@@ -116,6 +116,6 @@ def load_dataset(con: duckdb.DuckDBPyConnection, dataset: RawDataset,
         loaded.append(path.name)
     if skipped:
         log.info("Already loaded, skipped: %s", ", ".join(skipped))
-    total = (con.execute(f"SELECT count(*) FROM {RAW_SCHEMA}.{dataset.table}").fetchone()[0]
+    total = (con.execute(f"select count(*) from {RAW_SCHEMA}.{dataset.table}").fetchone()[0]
              if table_exists(con, dataset.table) else 0)
     return LoadSummary(dataset.table, loaded, skipped, total)

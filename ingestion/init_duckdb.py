@@ -13,11 +13,11 @@ def init_database(db_path: Path = DB_PATH) -> list[str]:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     with duckdb.connect(str(db_path)) as con:
         for schema in SCHEMAS:
-            con.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+            con.execute(f"create schema if not exists {schema}")
         # Only this database's schemas, not the system/temp catalogs.
         return [r[0] for r in con.execute(
-            "SELECT schema_name FROM information_schema.schemata "
-            "WHERE catalog_name = current_database() ORDER BY 1"
+            "select schema_name from information_schema.schemata "
+            "where catalog_name = current_database() order by 1"
         ).fetchall()]
 
 

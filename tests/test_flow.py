@@ -71,8 +71,6 @@ class FakePipeline:
                             flow_module.download_source.with_options(retries=0))
 
 
-# ---- Pure outcome rules ----------------------------------------------------------
-
 def test_describe_freshness_errors_only_on_error():
     assert describe_freshness(_freshness("warn"))[1] == []
     _, errors = describe_freshness(_freshness("error"))
@@ -92,8 +90,6 @@ def test_download_task_retries_with_backoff():
     assert task.retries == 2
     assert flow_module.DOWNLOAD_RETRY_DELAYS(2)[:2] == [60, 120]
 
-
-# ---- The flow end to end (fakes, real Prefect engine) ------------------------------
 
 def test_flow_succeeds_and_writes_report(prefect_server, monkeypatch, tmp_path):
     fake = FakePipeline(monkeypatch, tmp_path)
