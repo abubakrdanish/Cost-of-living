@@ -1,36 +1,34 @@
 # Australian Cost-of-Living Pipeline
 
-![CI](https://github.com/<your-github-user>/<your-repo>/actions/workflows/ci.yml/badge.svg)
-<!-- Replace <your-github-user>/<your-repo> after pushing to GitHub. -->
+[![CI](https://github.com/abubakrdanish/Cost-of-living/actions/workflows/ci.yml/badge.svg)](https://github.com/abubakrdanish/Cost-of-living/actions/workflows/ci.yml)
 
 How have rents, wages and inflation changed over time, by state and capital city in Australia?
 
 This project pulls official Australian Bureau of Statistics (ABS) data, keeps the raw files unchanged, models them with dbt in DuckDB and tests every layer (128 dbt checks, 70 offline Python tests). A Prefect flow runs it on a local schedule, GitHub Actions tests every change, and an Evidence dashboard shows the results. Everything is free, runs locally and needs no accounts or keys.
 
-<!-- Screenshots: add your own images, e.g. docs/images/overview.png, then uncomment.
-![Dashboard overview](docs/images/overview.png)
-![Prices, rents and wages over time](docs/images/over-time.png)
-![Rents, with the splice point marked](docs/images/rents.png)
--->
-> Screenshots: _placeholder. Add `docs/images/overview.png`, `over-time.png` and `rents.png`, then uncomment the block above._
+![Dashboard overview: latest annual change in prices, rents and wages for Australia, and key findings](docs/images/overview.png)
 
-> Personal portfolio project using public data only. Not financial or immigration advice.
+![Line chart of prices, rents and wages for Australia since 1997, each indexed to 100 in 1997-Q3](docs/images/over-time.png)
+
+![Line chart of annual rent growth for Australia, with the 2025-Q4 splice point marked](docs/images/rents.png)
+
+> Personal portfolio project using public data only. Not financial advice.
 
 ## Findings
 
-Covering 1997-Q3 to 2026-Q2. Each figure comes from a named query in [`docs/findings_queries.sql`](docs/findings_queries.sql); `python -m orchestration.findings` re-runs them. [`docs/findings.md`](docs/findings.md) has the full table and what the data does not show.
+As of the June quarter 2026 data, covering 1997-Q3 to 2026-Q2. Each figure comes from a named query in [`docs/findings_queries.sql`](docs/findings_queries.sql), shown in brackets after each finding (F1 to F8); `python -m orchestration.findings` re-runs them. [`docs/findings.md`](docs/findings.md) has the full table and what the data does not show.
 
-1. Over the whole period, wages rose a little faster than prices. In Australia, prices rose +121.1%, rents +139.4% and wages +141.7%, so wages relative to prices ended 9.3% higher. (F1)
-2. Most of that gain was lost after 2021. Wages relative to prices peaked in 2020-Q2 and fell 7.4% to a low in 2023-Q2. Real wage growth was negative for 10 quarters in a row, from 2021-Q2 to 2023-Q3. The 2020 peak partly reflects a temporary COVID-period dip in prices. (F2, F4)
-3. Prices are again outpacing wages in every region. Real wage growth has been negative since 2025-Q4, and in 2026-Q2 it was below zero in all 9 regions, from −0.47 points (Victoria) to −1.77 (Tasmania). (F4, F5)
-4. Rent growth varied widely by capital. Since 1997-Q3 rents rose +155.5% in Brisbane but +90.5% in Darwin. Rents outpaced the state's wages only in Brisbane and Sydney. (F6)
+1. Over the whole period, wages rose a little faster than prices. In Australia, prices rose +121.1%, rents +139.4% and wages +141.7%, so wages relative to prices ended 9.3% higher. (query F1)
+2. Most of that gain was lost after 2021. Wages relative to prices peaked in 2020-Q2 and fell 7.4% to a low in 2023-Q2. Real wage growth was negative for 10 quarters in a row, from 2021-Q2 to 2023-Q3. The 2020 peak partly reflects a temporary COVID-period dip in prices. (queries F2, F4)
+3. Prices are again outpacing wages in every region. Real wage growth has been negative since 2025-Q4, and in 2026-Q2 it was below zero in all 9 regions, from −0.47 points (Victoria) to −1.77 (Tasmania). (queries F4, F5)
+4. Rent growth varied widely by capital. Since 1997-Q3 rents rose +155.5% in Brisbane but +90.5% in Darwin. Rents outpaced the state's wages only in Brisbane and Sydney. (query F6)
 
 These describe how the indexes moved, not why. They are index changes, not dollar levels or affordability, and CPI rents are not advertised market rents.
 
 ## Architecture
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph ABS["ABS: public data, CC BY 4.0"]
         API["ABS Data API<br/>CPI 2.0.0 and WPI 1.2.0"]
         XLSX["Final quarterly CPI<br/>Table 9 (XLSX)"]
@@ -86,7 +84,7 @@ flowchart LR
 You need Python 3.12, Node.js 18 or newer (tested on 22) and git, on macOS or Linux.
 
 ```bash
-git clone https://github.com/<your-github-user>/<your-repo>.git && cd <your-repo>
+git clone https://github.com/abubakrdanish/Cost-of-living.git && cd Cost-of-living
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.lock
 cp dbt_project/profiles.yml.example dbt_project/profiles.yml
@@ -188,3 +186,5 @@ The full list is in [`docs/data_dictionary.md`](docs/data_dictionary.md#known-li
 ## Data and attribution
 
 Based on Australian Bureau of Statistics data: Consumer Price Index, Australia (6401.0) and Wage Price Index, Australia (6345.0), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The figures shown are derived (rebased, averaged, spliced and differenced) and are not ABS publications. Dataflow IDs, URLs and licence notes are in [`docs/data_sources.md`](docs/data_sources.md).
+
+The code is released under the MIT License (see [`LICENSE`](LICENSE)). The ABS data keeps its own CC BY 4.0 licence.
